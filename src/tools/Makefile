@@ -4,7 +4,7 @@ LDFLAGS=-L../libs -ltoolbox
 SOURCES=$(shell ls *.cpp)
 OBJECTS=$(SOURCES:.cpp=.o)
 DEPENDS=$(SOURCES:.cpp=.d)
-TOOLS=autocorr crosscorr gaussmix histogram ndhistogram trajworks fourier
+TOOLS=autocorr crosscorr gaussmix histogram ndhistogram trajworks fourier fourier_2d
 .PHONY: all clean $(TOOLS)
 
 CXXFLAGS:=$(CXXFLAGS) -I../libs

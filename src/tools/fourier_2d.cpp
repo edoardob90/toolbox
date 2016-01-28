@@ -6,10 +6,11 @@
  *  >>> planar, equally spaced grid only
  *  >>> number of points in the grid = number of atoms of the XYZ input data
  */
+#include <cmath>
+#include <complex>
 #include "clparser.hpp"
 #include "ioatoms.hpp"
 #include "fftw3.h"
-#include <cmath>
 
 using namespace std;
 using namespace toolbox;
@@ -43,18 +44,23 @@ int main(int argc, char **argv)
    
    if (!fok || fhelp) { banner(); return -1; }
 
-   // data of type "frame"
+   // global variables
    AtomFrame data_frame;
+   unsigned long iframe, npoints;
+   size_t ndata, ndatah;
+   valarray<double> fft_average;
     
    // read in trajectory
-   for ( unsigned long i=0; i<nframes; ++i ) {
-        unsigned long npoints=0; // # grid points. This should not change, but needs to be here
+   for ( iframe=0; iframe < nframes; ++iframe ) {
+        // read in current frame
+        npoints=0;
         ReadXYZFrame(cin, data_frame, npoints);
-        
+        ndata=sqrt(npoints); ndatah=(ndata/2)+1;
+        if (iframe==0) { fft_average.resize(ndata*ndatah); fft_average=0.0;} 
+
         // FFT array and allocation
-        size_t ndata=sqrt(npoints); size_t ndatah=(ndata/2)+1;
-        double *data_in=fftw_alloc_real(ndata*ndata); 
-        fftw_complex *data_fft=fftw_alloc_complex(ndata*ndatah);
+        double *data_in = fftw_alloc_real(ndata*ndata); 
+        fftw_complex *data_fft = fftw_alloc_complex(ndata*ndatah);
         
         // fill in FFT arrays properly
         for ( int iy=0; iy<ndata; ++iy ) {
@@ -71,13 +77,19 @@ int main(int argc, char **argv)
         fftw_execute(plan_forward);
 
         // CHECK: print output
-        printf(" Output Fourier coefficients:\n");
-        printf("\n");
-        for (int i=0; i<ndata; ++i) {
-            for (int j=0; j<ndatah; ++j) {
-                printf(" %4d %4d    %12f  %12f\n", i,j,data_fft[i*ndatah+j][0], data_fft[i*ndatah+j][1]);
-            }
+        //printf(" Output Fourier coefficients:\n");
+        //printf("\n");
+        //for (int i=0; i<ndata; ++i) {
+        //    for (int j=0; j<ndatah; ++j) {
+        //        printf(" %4d %4d    %12f  %12f\n", i,j,data_fft[i*ndatah+j][0], data_fft[i*ndatah+j][1]);
+        //    }
+        //}
+
+        // compute square moduli and accumulate time average
+        for ( int i=0; i<ndata*ndatah; ++i ) {
+            fft_average[i]+=creal(data_fft[i])*creal(data_fft[i])+cimag(data_fft[i])*cimag(data_fft[i]);
         }
    } // FRAMES
-   
+   fft_average/=nframes;
+   // print out kvectors
 }

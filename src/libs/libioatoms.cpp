@@ -12,12 +12,12 @@
 
 namespace toolbox {
 
-bool ReadXYZFrame(std::istream& istr, AtomFrame& curfr)
+bool ReadXYZFrame(std::istream& istr, AtomFrame& curfr, unsigned long& nat)
 {
     std::string line;
     std::stringstream ss;
     AtomData curat;
-    unsigned long nat, i; double cprop; 
+    unsigned long i; double cprop; 
     if(!getline(istr, line)) return false;
     curfr.index=0; curfr.ats.resize(0);
     ss.clear(); ss<<line;
@@ -33,6 +33,37 @@ bool ReadXYZFrame(std::istream& istr, AtomFrame& curfr)
         curfr.ats.push_back(curat);
     }
     return true;
+}
+
+bool ReadXYZFrame(std::istream& istr, AtomFrame& curfr)
+{
+    std::string line;
+    std::stringstream ss;
+    AtomData curat;
+    unsigned long i, nat; double cprop; 
+    if(!getline(istr, line)) return false;
+    curfr.index=0; curfr.ats.resize(0);
+    ss.clear(); ss<<line;
+    ss>>nat;
+    if (!getline(istr,curfr.comment)) ERROR("Read failed while getting frame "<<curfr.index<<".");
+    for (i=0; i<nat && getline(istr, line); ++i)
+    {
+        ss.clear(); ss<<line;
+        curat.props.resize(0);
+        ss>>curat.name>>curat.x>>curat.y>>curat.z;
+        if (ss.bad()) ERROR("Read failed in frame "<<curfr.index<<", on atom "<<i<<".");
+        while ((ss>>cprop)) curat.props.push_back(cprop);
+        curfr.ats.push_back(curat);
+    }
+    return true;
+}
+
+void ReadXYZ(std::istream& istr, std::vector<AtomFrame>& frames, unsigned long& nat)
+{
+    frames.resize(0);
+    AtomFrame curfr;
+    unsigned long nfr=0;
+    while(ReadXYZFrame(istr,curfr,nat)) {curfr.index=(++nfr); frames.push_back(curfr);}
 }
 
 void ReadXYZ(std::istream& istr, std::vector<AtomFrame>& frames)

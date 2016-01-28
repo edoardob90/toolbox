@@ -28,6 +28,10 @@ struct AtomFrame {
     std::map<std::string,double> nprops;
 };
 
+// modified versions of ReadXYZFrame and ReadXYZ 
+void ReadXYZ(std::istream& istr, std::vector<AtomFrame>& frames, unsigned long& nat);
+bool ReadXYZFrame(std::istream& istr, AtomFrame& aframe, unsigned long& nat);
+// original ReadXYZ functions
 void ReadXYZ(std::istream& istr, std::vector<AtomFrame>& frames);
 bool ReadXYZFrame(std::istream& istr, AtomFrame& frames);
 bool ReadDLPFrame(std::istream& istr, AtomFrame& frames);

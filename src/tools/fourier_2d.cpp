@@ -7,7 +7,6 @@
  *  >>> number of points in the grid = number of atoms of the XYZ input data
  */
 #include <cmath>
-#include <complex>
 #include "clparser.hpp"
 #include "ioatoms.hpp"
 #include "fftw3.h"
@@ -63,13 +62,10 @@ int main(int argc, char **argv)
         fftw_complex *data_fft = fftw_alloc_complex(ndata*ndatah);
         
         // fill in FFT arrays properly
-        for ( int iy=0; iy<ndata; ++iy ) {
-            for ( int ix=0; ix<ndata; ++ix ) {
-                //printf("DEBUG: %i %i %i \n", ix, iy, iy*ndata+ix);
-                if ( datacol=="y" ) data_in[iy*ndata+ix] = data_frame.ats[iy*ndata+ix].y;
-                else if ( datacol=="z" ) data_in[iy*ndata+ix] = data_frame.ats[iy*ndata+ix].z;
-                else data_in[iy*ndata+ix]=data_frame.ats[iy*ndata+ix].x;
-            }
+        for ( int i=0; i<ndata*ndata; ++i ) {
+            if ( datacol=="y" ) data_in[i] = data_frame.ats[i].y;
+            else if ( datacol=="z" ) data_in[i] = data_frame.ats[i].z;
+            else data_in[i]=data_frame.ats[i].x;
         }
 
         // FFT plan & execute
@@ -87,9 +83,20 @@ int main(int argc, char **argv)
 
         // compute square moduli and accumulate time average
         for ( int i=0; i<ndata*ndatah; ++i ) {
-            fft_average[i]+=creal(data_fft[i])*creal(data_fft[i])+cimag(data_fft[i])*cimag(data_fft[i]);
+            fft_average[i] += data_fft[i][0]*data_fft[i][0]+data_fft[i][1]*data_fft[i][1]; //)*creal(data_fft[i])+cimag(data_fft[i])*cimag(data_fft[i]);
         }
    } // FRAMES
+
+   // compute the time average
    fft_average/=nframes;
-   // print out kvectors
+
+   // print output
+   //cout<<"# FIELDS"<<endl<<"# k_x  k_y  fft_average[k_y,k_x]"<<endl<<"#"<<endl;
+   cout.precision(8); cout.width(15); cout.setf(ios::scientific);
+   for (int i=0; i<ndatah; ++i) {
+       for (int j=0; j<ndatah; ++j) {
+           cout<<(2.*constant::pi)*j/(dx*ndata)<<"   "<<(2.*constant::pi)*i/(dx*ndata)<<"   "<<fft_average[i*ndatah+j]<<endl;
+       }
+       //cout<<endl;
+   }
 }

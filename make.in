@@ -1,7 +1,7 @@
 # DO NOT MODIFY THIS FILE. Please edit the appropriate arch file instead
 # Sane defaults for compiling on a system that 
 # has all the libraries installed
-LDFLAGS=-lfftw3 -llapack
+LDFLAGS=-lfftw3 -llapack -lm
 CXX=g++
 CXXFLAGS=-O3 -ftracer -g 
 
@@ -17,8 +17,16 @@ MAKEDEPEND=$(CXX) -M $(CXXFLAGS)
 
 # Parallel/serial compilation
 ifneq ($(PARALLEL),)
-  CXXFLAGS:=$(CXXFLAGS) -DTB_MPI
+   CXXFLAGS:=$(CXXFLAGS) -D_OMP -fopenmp
+   LDFLAGS:=-llapack -lfftw3_omp -lm
 endif
+
+#ifeq (omp,$(findstring($(PARALLEL),omp)))
+#   CXXFLAGS:=$(CXXFLAGS) -D_OMP -fopenmp
+#   LDFLAGS:=-llapack -lfftw3_omp -lpthreads -lm
+#else ifeq (mpi,$(findstring(mpi,$(PARALLEL))))
+#    CXXFLAGS:=$(CXXFLAGS) -DTB_MPI
+#endif
 
 # Switches for debug mode
 ifneq ($(DEBUG),)

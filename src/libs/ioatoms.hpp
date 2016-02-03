@@ -29,7 +29,7 @@ struct AtomFrame {
 };
 
 // modified versions of ReadXYZFrame and ReadXYZ 
-void ReadXYZ(std::istream& istr, std::vector<AtomFrame>& frames, unsigned long& nat);
+void ReadXYZ(std::istream& istr, std::vector<AtomFrame>& frames, std::vector<unsigned int>& nat_each_frame);
 bool ReadXYZFrame(std::istream& istr, AtomFrame& aframe, unsigned long& nat);
 // original ReadXYZ functions
 void ReadXYZ(std::istream& istr, std::vector<AtomFrame>& frames);

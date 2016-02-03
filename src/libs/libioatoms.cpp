@@ -58,12 +58,16 @@ bool ReadXYZFrame(std::istream& istr, AtomFrame& curfr)
     return true;
 }
 
-void ReadXYZ(std::istream& istr, std::vector<AtomFrame>& frames, unsigned long& nat)
+void ReadXYZ(std::istream& istr, std::vector<AtomFrame>& frames, std::vector<unsigned int>& nat_each_frame)
 {
-    frames.resize(0);
+    frames.resize(0); nat_each_frame.resize(0);
     AtomFrame curfr;
-    unsigned long nfr=0;
-    while(ReadXYZFrame(istr,curfr,nat)) {curfr.index=(++nfr); frames.push_back(curfr);}
+    unsigned long nfr=0; nat;
+    while(ReadXYZFrame(istr,curfr,nat)) {
+        curfr.index=(++nfr);
+        frames.push_back(curfr);
+        nat_each_frame.push_back(nat);
+    }
 }
 
 void ReadXYZ(std::istream& istr, std::vector<AtomFrame>& frames)

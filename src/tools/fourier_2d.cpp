@@ -9,6 +9,9 @@
 #include <cmath>
 #include "clparser.hpp"
 #include "ioatoms.hpp"
+#ifdef _OMP
+#include <omp.h>
+#endif
 #include "fftw3.h"
 
 using namespace std;
@@ -48,6 +51,12 @@ int main(int argc, char **argv)
    unsigned long iframe, npoints;
    size_t ndata, ndatah;
    valarray<double> fft_average;
+#ifdef _OMP
+   int nthreads=omp_get_num_threads();
+   cerr<<"Multi-threaded FFTW in use. FFTW will be executed using "<<nthreads<<" threads."<<endl;
+   int omp_error=fftw_init_threads();
+   if (omp_error==0) cerr<<"**WARNING**: some error occurred while initializing multi-threaded FFTW!"<<endl;
+#endif
     
    // read in trajectory
    for ( iframe=0; iframe < nframes; ++iframe ) {
@@ -55,6 +64,8 @@ int main(int argc, char **argv)
         npoints=0;
         ReadXYZFrame(cin, data_frame, npoints);
         ndata=sqrt(npoints); ndatah=(ndata/2)+1;
+        
+        // at the beginning, resize FFT average vector to accomodate data
         if (iframe==0) { fft_average.resize(ndata*ndatah); fft_average=0.0;} 
 
         // FFT array and allocation
@@ -69,7 +80,13 @@ int main(int argc, char **argv)
         }
 
         // FFT plan & execute
+#ifdef _OMP
+        fftw_plan_with_nthreads(nthreads);
         fftw_plan plan_forward=fftw_plan_dft_r2c_2d(ndata, ndata, data_in, data_fft, FFTW_ESTIMATE);
+#else
+        fftw_plan plan_forward=fftw_plan_dft_r2c_2d(ndata, ndata, data_in, data_fft, FFTW_ESTIMATE);
+#endif
+        
         fftw_execute(plan_forward);
 
         // CHECK: print output
@@ -85,6 +102,9 @@ int main(int argc, char **argv)
         for ( int i=0; i<ndata*ndatah; ++i ) {
             fft_average[i] += data_fft[i][0]*data_fft[i][0]+data_fft[i][1]*data_fft[i][1]; //)*creal(data_fft[i])+cimag(data_fft[i])*cimag(data_fft[i]);
         }
+
+        // FFT destroy
+        fftw_free(data_in) ; fftw_free(data_fft) ; fftw_destroy_plan(plan_forward);
    } // FRAMES
 
    // compute the time average
@@ -93,6 +113,7 @@ int main(int argc, char **argv)
    // print output
    //cout<<"# FIELDS"<<endl<<"# k_x  k_y  fft_average[k_y,k_x]"<<endl<<"#"<<endl;
    cout.precision(8); cout.width(15); cout.setf(ios::scientific);
+   // we are printing HALF the data in each k-direction, beacause we know that the interesting behaviour is at small k-vectors
    for (int i=0; i<ndatah; ++i) {
        for (int j=0; j<ndatah; ++j) {
            cout<<(2.*constant::pi)*j/(dx*ndata)<<"   "<<(2.*constant::pi)*i/(dx*ndata)<<"   "<<fft_average[i*ndatah+j]<<endl;

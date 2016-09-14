@@ -1,0 +1,4 @@
+LDFLAGS=-mkl
+CXX=icpc
+CXXFLAGS=-fast -xHost
+

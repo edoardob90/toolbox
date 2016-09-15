@@ -1215,6 +1215,9 @@ int main(int argc, char **argv)
                 i++;
             }
         }
+        // MSD section
+        // In this branch we try to implement multi-component diffusion
+        // *** WORK IN PROGRESS ***
         if (fmsd)
         {
             

@@ -1232,10 +1232,8 @@ int main(int argc, char **argv)
         }
         // MSD section
         // In this branch we try to implement multi-component diffusion
-        // *** WORK IN PROGRESS ***
         if (fmsd)
         {
-            
             if (npfr==1){ // mark the species to be used
                           // to compute the MSD
                 fmsd_inc.resize(msdlag,af.ats.size()); fmsd_inc.all()=false;
@@ -1271,6 +1269,16 @@ int main(int argc, char **argv)
                     }                
                 }
             
+        }
+        // multi-diffusion: we compute here a "generalized" MSD taking into account different chemical species
+        if (fmsdiff)
+        {
+            // if first frame, resize buffers
+            if (npfr==1) { fmsd_inc.resize(msdlag,af.ats.size()); fmsd_inc.all()=false; }
+
+            // now parse current frame and label species
+            fmsd_inc.row((npfr-1)%msdlag)=false;
+            //if
         }
         if (fdipole)
         {

@@ -23,6 +23,11 @@ bool chk_sel(const std::string& label, const std::string& regex)
 { return (regex=="*")||(label==regex); }
 #endif
 
+// ACHTUNG! Following stuff need Boost Math library installed
+#ifdef __BMATH
+#include <boost/math/special_functions/binomial.hpp>
+#endif
+
 #include "matrix-full.hpp"
 #include "matrix-io.hpp"
 #include "ioparser.hpp"
@@ -503,9 +508,14 @@ int main(int argc, char **argv)
     double vvnat=0; std::valarray<AutoCorrelation<double> > vvacf; std::valarray<bool> fvvac_inc;
 
     //MSD stuff
-    unsigned long imsd=0 , msdnat=0; std::valarray<unsigned long> nmsd(msdlag); 
+    unsigned long imsd=0, msdnat=0;
+    std::valarray<unsigned long> nmsd(msdlag); 
     std::valarray<AtomFrame> msdbuff(msdlag);
-    std::valarray<double> dmsd(msdlag); nmsd=0; dmsd=0.; FMatrix<bool>  fmsd_inc(msdlag,msdlag);
+    std::valarray<double> dmsd(msdlag);
+    nmsd=0; dmsd=0.;
+    FMatrix<bool>  fmsd_inc(msdlag,msdlag);
+    //... and multi-component MSD stuff
+    FMatrix<double> deltas;
 
     //density histograms
     std::valarray<HGOptions<Histogram<double> > > hgo(3);
@@ -1273,6 +1283,12 @@ int main(int argc, char **argv)
         // multi-diffusion: we compute here a "generalized" MSD taking into account different chemical species
         if (fmsdiff)
         {
+            // if more than two components, abort!
+            // for the case of > 2 components we need to implement a varying-size array for deltas that depends on the number of possible i-j pairs, including i=j
+            if (mtypes.size()>2) { ERROR("Multi-component MSD with more than two molecular species is not implemented! Complain with the programmer :-)"); } //TO DO
+            else { deltas.resize(3,6); }
+            
+            
             // if first frame, resize buffers
             if (npfr==1) { fmsd_inc.resize(msdlag,af.ats.size()); fmsd_inc.all()=false; }
 

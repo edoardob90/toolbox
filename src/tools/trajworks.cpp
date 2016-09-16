@@ -349,6 +349,10 @@ void banner()
             << " ## mean square displacement calculation (-msd)                                 \n"
             << " -msdat    label of the monitored specie [*]                                    \n"
             << " -msdlag   maximum time-lag to compute msd for [1000]                           \n"
+            << " ## multi-component diffusion (Maxwell-Stefan) Onsager coefficients (-msdiff) 	\n"
+			<< " -maxlag   maximum time-lag to compute msd for [1000]							\n"
+			<< " -types    list of molecular species to compute diffusion matrix for [*]        \n"
+            << "           (default means all species found in input trajectory)                \n"
             << " ## velocity-velocity correlation options (-vvac)                               \n"
             << " -vvat     label of the monitored specie [*]                                    \n"
             << " -vvlag    maximum time-lag to compute vvac for [1000]                          \n"
@@ -377,6 +381,10 @@ int main(int argc, char **argv)
     CLParser clp(argc, argv);
 
     bool fgdr=false, fvvac=false, fxyz=false, fdlp=false, fmsd=false, fdipole=false, fdens=false, fdtraj=false, fdproj=false, fdpov=false, fpca=false, fpcaxyz=false, fpcanocov=false, fvbox=false, fcv=false, fpd=false, fvvacbox=false, fp3d=false, fp3dinv=false, funwrap=false, fpproj=false, fthermal=false, fcharge=false, fhelp;
+    // Addition for Maxwell-Stefan diffusion
+    bool fmsdiff=false;
+    std::vector<std::string> mtypes; // list of molecule species
+    //
     std::string lgdr1, lgdr2, dummy, lvvac, lmsd, ldens, ldalign, lpcalign, lpcat, prefix, fbox, fqat, sdbins, sdfold, sdrange, fref, lpdat,shwin, lp3dat, flab, lppat1, lppat2, lcv, fweights;
     double cogdr, dt, densw, pdmax, p3dmax, hwinfac; unsigned long fstart,fstop,fstep,gdrbins, vvlag, msdlag, ftpad, dbinsx, dbinsy, dbinsz, dfoldx, dfoldy, dfoldz, cvtype, pdbins, p3dbins;
     double drangeax, drangebx,  drangeay, drangeby,  drangeaz, drangebz;
@@ -416,6 +424,9 @@ int main(int argc, char **argv)
             clp.getoption(fmsd,"msd",false) &&
             clp.getoption(msdlag,"msdlag",(unsigned long) 1000) &&
             clp.getoption(lmsd,"msdat",std::string("*")) &&
+            // multi-diffusion options
+            clp.getoption(fmsdiff,"msdiff",false) &&
+            clp.getoption(mtypes,"types",std::vector<std::string>(1,"*")) &&
             //density options
             clp.getoption(fcv,"cv",false) &&
             clp.getoption(lcv,"cvat",std::string("*")) &&
@@ -612,7 +623,7 @@ int main(int argc, char **argv)
             ovvac=new std::ofstream((prefix+std::string(".vvac")).c_str());
             (*ovvac).precision(8); (*ovvac).width(15); (*ovvac).setf(std::ios::scientific);
         }
-        if (fmsd)
+        if (fmsd || fmsdiff) // standard MSD or multi-component diffusion output to the same file for compactness
         {
             omsd=new std::ofstream((prefix+std::string(".msd")).c_str());
             (*omsd).precision(8); (*omsd).width(15); (*omsd).setf(std::ios::scientific);
@@ -698,8 +709,12 @@ int main(int argc, char **argv)
     double statweight=1.0, stattot=0.0;
     if (fbox!="") ifbox.open(fbox.c_str());
     if (fweights!="") ifweights.open(fweights.c_str());
-    ffirstcell=true;    
-    while ((fdlp && ReadDLPFrame(std::cin,af))||(fxyz && ReadXYZFrame(std::cin,af)))
+    ffirstcell=true;
+    
+    
+    // START reading trajectory input
+    
+    while ( (fdlp && ReadDLPFrame(std::cin,af) ) || (fxyz && ReadXYZFrame(std::cin,af)) )
     {
         ++nfr;
         if (fstop!=0 && nfr>fstop)  break;
@@ -1236,6 +1251,7 @@ int main(int argc, char **argv)
             /*std::valarray<bool> tempor(af.ats.size()); 
             tempor=fmsd_inc.row((npfr-1)%msdlag);
             std::cerr<<tempor<<"\n";*/
+            
             // fill the buffer
             msdbuff[(npfr-1)%msdlag] = af;
             if((npfr-1)<(msdlag-1)) continue;
@@ -1293,6 +1309,8 @@ int main(int argc, char **argv)
 
     }
 
+	// EOF trajectory read
+	
     //normalize the histogram according to g(r) definition
 
     if (fgdr)

@@ -26,6 +26,18 @@ bool chk_sel(const std::string& label, const std::string& regex)
 // ACHTUNG! Following stuff need Boost Math library installed
 #ifdef __BMATH
 #include <boost/math/special_functions/binomial.hpp>
+using namespace boost;
+#else
+// naive function to compute binomials
+unsigned long binCoeff(unsigned n, unsigned k)
+{
+  // Base cases
+  if (k==0 || k==n)
+    return 1;
+ 
+  // Recur
+  return  binCoeff(n-1, k-1) + binCoeff(n-1, k);
+}
 #endif
 
 #include "matrix-full.hpp"
@@ -720,6 +732,13 @@ int main(int argc, char **argv)
     if (fbox!="") ifbox.open(fbox.c_str());
     if (fweights!="") ifweights.open(fweights.c_str());
     ffirstcell=true;
+
+
+    // small debug before reading
+    //std::cerr<<"HOW MANY? "<<mtypes.size()<<std::endl;
+    //unsigned long pairs=binCoeff(mtypes.size()+2-1,2);
+    //std::cerr<<"NUMBER OF PAIRS: "<<pairs<<std::endl;
+    //exit(99);
     
     
     // START reading trajectory input
@@ -1283,18 +1302,23 @@ int main(int argc, char **argv)
         // multi-diffusion: we compute here a "generalized" MSD taking into account different chemical species
         if (fmsdiff)
         {
-            // if more than two components, abort!
-            // for the case of > 2 components we need to implement a varying-size array for deltas that depends on the number of possible i-j pairs, including i=j
-            if (mtypes.size()>2) { ERROR("Multi-component MSD with more than two molecular species is not implemented! Complain with the programmer :-)"); } //TO DO
-            else { deltas.resize(3,6); }
+            // compute the number of possible i-j terms (binomial coefficient)
+#ifndef __BMATH
+            //ERROR("Toolbox has not been compiled with Boost math library needed for this feature! Abort.");
+            unsigned long pairs=binCoeff(mtypes.size()-1,2);
+#else
+            unsigned long pairs=math::binomial_coefficient<unsigned long>(mtypes.size()-1,2);
+#endif
+            std::cerr<<"Number of possible pairs: "<<pairs<<std::endl;
             
-            
+            // resize vector of displacements
+            deltas.resize(3,pairs);
+
             // if first frame, resize buffers
             if (npfr==1) { fmsd_inc.resize(msdlag,af.ats.size()); fmsd_inc.all()=false; }
-
             // now parse current frame and label species
             fmsd_inc.row((npfr-1)%msdlag)=false;
-            //if
+
         }
         if (fdipole)
         {

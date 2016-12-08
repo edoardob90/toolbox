@@ -1319,6 +1319,17 @@ int main(int argc, char **argv)
             // now parse current frame and label species
             fmsd_inc.row((npfr-1)%msdlag)=false;
 
+            // fill the buffer
+            msdbuff[(npfr-1)%msdlag] = af; // current traj frame in buffer
+            if( (npfr-1)<(msdlag-1) ) continue; // go on with filling the buffer until the end of the trajector or the maxlag chosen
+
+            // compute
+            imsd = (npfr-1)-(msdlag-1); // we compute MSD for this frame
+            for (unsigned long ilag=0; ilag<msdlag; ++ilag) {
+                for (unsigned long
+
+            }
+
         }
         if (fdipole)
         {

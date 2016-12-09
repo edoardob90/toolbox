@@ -514,6 +514,8 @@ int main(int argc, char **argv)
     hgwo.window_width=(hgwo.boundaries[1]-hgwo.boundaries[0])*hwinfac;   hgdr.set_options(hgwo);
 
     double d12, dx, dy, dz, cog2=cogdr*cogdr, gdrw, gdrwtot;
+    // MSdiff add
+    double dx2, dy2, dz2;
     int nfr=0, npfr=0;
     
     //velocity-velocity correlation stuff
@@ -527,7 +529,7 @@ int main(int argc, char **argv)
     nmsd=0; dmsd=0.;
     FMatrix<bool>  fmsd_inc(msdlag,msdlag);
     //... and multi-component MSD stuff
-    FMatrix<double> deltas;
+    //FMatrix<double> deltas; // USELESS!!!
 
     //density histograms
     std::valarray<HGOptions<Histogram<double> > > hgo(3);
@@ -1286,7 +1288,7 @@ int main(int argc, char **argv)
             // compute the avg MSD
             imsd = (npfr-1)-(msdlag-1);
             for (unsigned long j=0; j<msdlag; ++j) {
-                double cmsd=0.;
+                //double cmsd=0.;
                 for (unsigned long o=0; o<af.ats.size(); ++o)
                     if(fmsd_inc(imsd%msdlag,o)) {
                        dx=msdbuff[(imsd+j)%msdlag].ats[o].x-msdbuff[imsd%msdlag].ats[o].x;
@@ -1302,34 +1304,37 @@ int main(int argc, char **argv)
         // multi-diffusion: we compute here a "generalized" MSD taking into account different chemical species
         if (fmsdiff)
         {
-            // compute the number of possible i-j terms (binomial coefficient)
-#ifndef __BMATH
-            //ERROR("Toolbox has not been compiled with Boost math library needed for this feature! Abort.");
-            unsigned long pairs=binCoeff(mtypes.size()-1,2);
-#else
-            unsigned long pairs=math::binomial_coefficient<unsigned long>(mtypes.size()-1,2);
-#endif
-            std::cerr<<"Number of possible pairs: "<<pairs<<std::endl;
-            
-            // resize vector of displacements
-            deltas.resize(3,pairs);
-
             // if first frame, resize buffers
-            if (npfr==1) { fmsd_inc.resize(msdlag,af.ats.size()); fmsd_inc.all()=false; }
+            if (npfr==1) { fmsd_inc.resize(msdlag,mtypes.size()); fmsd_inc.all()=false; }
+            
             // now parse current frame and label species
             fmsd_inc.row((npfr-1)%msdlag)=false;
+            if (mtypes=="*") { fmsd_inc.row((npfr-1)%msdlag)=true; }
+            else for(unsigned long i=0; i<af.ats.size(); ++i) {
+                    for (unsigned long j=0; j<mtypes.size(); ++j) {
+                        if(af.ats[i].name==mtypes[j]) { 
+                            fmsd_inc((npfr-1)%msdlag,j)=true;
+                        }   
+                }
+            }
 
             // fill the buffer
             msdbuff[(npfr-1)%msdlag] = af; // current traj frame in buffer
             if( (npfr-1)<(msdlag-1) ) continue; // go on with filling the buffer until the end of the trajector or the maxlag chosen
 
             // compute
-            imsd = (npfr-1)-(msdlag-1); // we compute MSD for this frame
+            imsd = npfr-msdlag; // we compute MSD for this frame
             for (unsigned long ilag=0; ilag<msdlag; ++ilag) {
-                for (unsigned long
-
+                // now check that species i and j are labelled as "true"; if yes, accumulate MSD
+                for (unsigned long ispec=0; ispec<mtypes.size(); ++ispec) {
+                    for (unsigned long jspec=0; jspec<mtypes.size(); ++jspec) {
+                        if (jspec<ispec) continue;
+                        if (fmsd_inc(imsd%msdlag,ispec) && fmsd_inc(imsd%msdlag,jspec)) {
+                            // COMPUTE
+                        }
+                    }
+                }
             }
-
         }
         if (fdipole)
         {
@@ -1501,6 +1506,8 @@ int main(int argc, char **argv)
             (*omsd) <<it*dt<<"  "<<dmsd[it]/nmsd[it]<<std::endl;
         }
         
+    } else if (fmsdiff) {
+        // STUFF
     }
     if (fdipole)
     {

@@ -529,7 +529,7 @@ int main(int argc, char **argv)
     nmsd=0; dmsd=0.;
     FMatrix<bool>  fmsd_inc(msdlag,msdlag);
     //... and multi-component MSD stuff
-    //FMatrix<double> deltas; // USELESS!!!
+    FMatrix<double> dmatrix;
 
     //density histograms
     std::valarray<HGOptions<Histogram<double> > > hgo(3);
@@ -1299,13 +1299,12 @@ int main(int argc, char **argv)
                        nmsd[j]++;
                     }                
                 }
-            
         }
         // multi-diffusion: we compute here a "generalized" MSD taking into account different chemical species
         if (fmsdiff)
         {
             // if first frame, resize buffers
-            if (npfr==1) { fmsd_inc.resize(msdlag,mtypes.size()); fmsd_inc.all()=false; }
+            if (npfr==1) { fmsd_inc.resize(msdlag,mtypes.size()); fmsd_inc.all()=false; dmatrix.resize(msdlag,mtypes.size(),mtypes.size()) }
             
             // now parse current frame and label species
             fmsd_inc.row((npfr-1)%msdlag)=false;
@@ -1327,10 +1326,17 @@ int main(int argc, char **argv)
             for (unsigned long ilag=0; ilag<msdlag; ++ilag) {
                 // now check that species i and j are labelled as "true"; if yes, accumulate MSD
                 for (unsigned long ispec=0; ispec<mtypes.size(); ++ispec) {
-                    for (unsigned long jspec=0; jspec<mtypes.size(); ++jspec) {
-                        if (jspec<ispec) continue;
+                    for (unsigned long jspec=ispec; jspec<mtypes.size(); ++jspec) {
                         if (fmsd_inc(imsd%msdlag,ispec) && fmsd_inc(imsd%msdlag,jspec)) {
-                            // COMPUTE
+                            dx=(msdbuff[(imsd+ilag)%msdlag].ats[ispec].x-msdbuff[imsd%msdlag].ats[ispec].x)*
+                                                    (msdbuff[(imsd+ilag)%msdlag].ats[jspec].x-msdbuff[imsd%msdlag].ats[jspec].x); // x-comp
+                            dy=(msdbuff[(imsd+ilag)%msdlag].ats[ispec].y-msdbuff[imsd%msdlag].ats[ispec].y)*
+                                                    (msdbuff[(imsd+ilag)%msdlag].ats[jspec].y-msdbuff[imsd%msdlag].ats[jspec].y); // y-comp
+                            dz=(msdbuff[(imsd+ilag)%msdlag].ats[ispec].z-msdbuff[imsd%msdlag].ats[ispec].z)*
+                                                    (msdbuff[(imsd+ilag)%msdlag].ats[jspec].z-msdbuff[imsd%msdlag].ats[jspec].z); // z-comp
+                            // accumulate the true MSD
+                            dmatrix[ilag,ispec,jspec]+=dx+dy+dz;
+                            nmsd[ilad]++;
                         }
                     }
                 }
@@ -1507,7 +1513,36 @@ int main(int argc, char **argv)
         }
         
     } else if (fmsdiff) {
-        // STUFF
+          for (unsigned long ts=0; ts<msdlag; ++ts) {
+            ++imsd;
+            std::cerr<<  "Finishing to average the MSD "<<std::setw(10)<<std::setiosflags(std::ios::right)<<imsd<<"\r";
+            for (unsigned long j=0; j<msdlag; ++j) {
+                    if ((imsd+j)>(npfr-1)) break;
+                    for (unsigned long ispec=0; ispec<mtypes.size(); ++ispec) {
+                        for (unsigned long jspec=ispec; jspec<mtypes.size(); ++jspec) {
+                            if (fmsd_inc(imsd%msdlag,ispec) && fmsd_inc(imsd%msdlag,jspec)) {
+                                dx=(msdbuff[(imsd+ilag)%msdlag].ats[ispec].x-msdbuff[imsd%msdlag].ats[ispec].x)*
+                                                        (msdbuff[(imsd+ilag)%msdlag].ats[jspec].x-msdbuff[imsd%msdlag].ats[jspec].x); // x-comp
+                                dy=(msdbuff[(imsd+ilag)%msdlag].ats[ispec].y-msdbuff[imsd%msdlag].ats[ispec].y)*
+                                                        (msdbuff[(imsd+ilag)%msdlag].ats[jspec].y-msdbuff[imsd%msdlag].ats[jspec].y); // y-comp
+                                dz=(msdbuff[(imsd+ilag)%msdlag].ats[ispec].z-msdbuff[imsd%msdlag].ats[ispec].z)*
+                                                        (msdbuff[(imsd+ilag)%msdlag].ats[jspec].z-msdbuff[imsd%msdlag].ats[jspec].z); // z-comp
+                                // accumulate the true MSD
+                                dmatrix[ilag,ispec,jspec]+=dx+dy+dz;
+                                nmsd[ilag]++;
+                            }
+                        }
+                    }
+            }
+          }
+        std::cerr<<"# PRINTING OUT msd\n";
+        for (unsigned long it=0; it<msdlag; ++it){
+            for (unsigned long ispec=0; ispec<mtypes.size(); ++ispec){
+                for (unsigned long jspec=ispec; jspec<mtypes.size(); ++jspec){
+                    (*omsd) <<it*dt<<"  "<<ispec<<"  "<<jspec<<"  "<<dmatrix[it,ispec,jspec]/nmsd[it]<<std::endl;
+                }
+            }
+        }
     }
     if (fdipole)
     {

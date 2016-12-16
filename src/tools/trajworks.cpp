@@ -35,7 +35,7 @@ unsigned long binCoeff(unsigned n, unsigned k)
   if (k==0 || k==n)
     return 1;
  
-  // Recur
+  // Recursive call
   return  binCoeff(n-1, k-1) + binCoeff(n-1, k);
 }
 #endif
@@ -515,7 +515,6 @@ int main(int argc, char **argv)
 
     double d12, dx, dy, dz, cog2=cogdr*cogdr, gdrw, gdrwtot;
     // MSdiff add
-    double dx2, dy2, dz2;
     int nfr=0, npfr=0;
     
     //velocity-velocity correlation stuff
@@ -529,7 +528,8 @@ int main(int argc, char **argv)
     nmsd=0; dmsd=0.;
     FMatrix<bool>  fmsd_inc(msdlag,msdlag);
     //... and multi-component MSD stuff
-    FMatrix<double> dmatrix;
+    unsigned long pairs;
+    std::valarray<double> dmatrix;
 
     //density histograms
     std::valarray<HGOptions<Histogram<double> > > hgo(3);
@@ -1303,12 +1303,14 @@ int main(int argc, char **argv)
         // multi-diffusion: we compute here a "generalized" MSD taking into account different chemical species
         if (fmsdiff)
         {
+            // compute number of pairs
+            pairs=binCoeff(mtypes.size()+2-1,2);
             // if first frame, resize buffers
-            if (npfr==1) { fmsd_inc.resize(msdlag,mtypes.size()); fmsd_inc.all()=false; dmatrix.resize(msdlag,mtypes.size(),mtypes.size()) }
+            if (npfr==1) { fmsd_inc.resize(msdlag,mtypes.size()); fmsd_inc.all()=false; dmatrix.resize(msdlag,pairs); }
             
             // now parse current frame and label species
             fmsd_inc.row((npfr-1)%msdlag)=false;
-            if (mtypes=="*") { fmsd_inc.row((npfr-1)%msdlag)=true; }
+            if (mtypes.size()==1 && mtypes[0]=="*") { fmsd_inc.row((npfr-1)%msdlag)=true; }
             else for(unsigned long i=0; i<af.ats.size(); ++i) {
                     for (unsigned long j=0; j<mtypes.size(); ++j) {
                         if(af.ats[i].name==mtypes[j]) { 
@@ -1335,8 +1337,8 @@ int main(int argc, char **argv)
                             dz=(msdbuff[(imsd+ilag)%msdlag].ats[ispec].z-msdbuff[imsd%msdlag].ats[ispec].z)*
                                                     (msdbuff[(imsd+ilag)%msdlag].ats[jspec].z-msdbuff[imsd%msdlag].ats[jspec].z); // z-comp
                             // accumulate the true MSD
-                            dmatrix[ilag,ispec,jspec]+=dx+dy+dz;
-                            nmsd[ilad]++;
+                            dmatrix[ilag,(ispec*mtypes.size())+jspec]+=dx+dy+dz;
+                            nmsd[ilag]++;
                         }
                     }
                 }
@@ -1515,9 +1517,9 @@ int main(int argc, char **argv)
     } else if (fmsdiff) {
           for (unsigned long ts=0; ts<msdlag; ++ts) {
             ++imsd;
-            std::cerr<<  "Finishing to average the MSD "<<std::setw(10)<<std::setiosflags(std::ios::right)<<imsd<<"\r";
-            for (unsigned long j=0; j<msdlag; ++j) {
-                    if ((imsd+j)>(npfr-1)) break;
+            std::cerr<<  "Finishing to average the MSD (multidiff)"<<std::setw(10)<<std::setiosflags(std::ios::right)<<imsd<<"\r";
+            for (unsigned long ilag=0; ilag<msdlag; ++ilag) {
+                    if ((imsd+ilag)>(npfr-1)) break;
                     for (unsigned long ispec=0; ispec<mtypes.size(); ++ispec) {
                         for (unsigned long jspec=ispec; jspec<mtypes.size(); ++jspec) {
                             if (fmsd_inc(imsd%msdlag,ispec) && fmsd_inc(imsd%msdlag,jspec)) {
@@ -1528,14 +1530,14 @@ int main(int argc, char **argv)
                                 dz=(msdbuff[(imsd+ilag)%msdlag].ats[ispec].z-msdbuff[imsd%msdlag].ats[ispec].z)*
                                                         (msdbuff[(imsd+ilag)%msdlag].ats[jspec].z-msdbuff[imsd%msdlag].ats[jspec].z); // z-comp
                                 // accumulate the true MSD
-                                dmatrix[ilag,ispec,jspec]+=dx+dy+dz;
+                                dmatrix[ilag,(ispec*mtypes.size())+jspec]+=dx+dy+dz;
                                 nmsd[ilag]++;
                             }
                         }
                     }
             }
           }
-        std::cerr<<"# PRINTING OUT msd\n";
+        std::cerr<<"# PRINTING OUT multidiff coefficients\n";
         for (unsigned long it=0; it<msdlag; ++it){
             for (unsigned long ispec=0; ispec<mtypes.size(); ++ispec){
                 for (unsigned long jspec=ispec; jspec<mtypes.size(); ++jspec){

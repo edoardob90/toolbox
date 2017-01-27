@@ -1315,6 +1315,7 @@ int main(int argc, char **argv)
                     for (unsigned long j=0; j<mtypes.size(); ++j) {
                         if(af.ats[i].name==mtypes[j]) { 
                             fmsd_inc((npfr-1)%msdlag,j)=true;
+                            //std::cerr<<"*** MSD flag for "<<af.ats[i].name<<" and type "<<mtypes[j]<<" is TRUE!"<<std::endl;
                         }   
                 }
             }
@@ -1333,9 +1334,9 @@ int main(int argc, char **argv)
                             dx=(msdbuff[(imsd+ilag)%msdlag].ats[ispec].x-msdbuff[imsd%msdlag].ats[ispec].x)*
                                                     (msdbuff[(imsd+ilag)%msdlag].ats[jspec].x-msdbuff[imsd%msdlag].ats[jspec].x); // x-comp
                             dy=(msdbuff[(imsd+ilag)%msdlag].ats[ispec].y-msdbuff[imsd%msdlag].ats[ispec].y)*
-                                                    (msdbuff[(imsd+ilag)%msdlag].ats[jspec].y-msdbuff[imsd%msdlag].ats[jspec].y); // y-comp
+                                                    ( msdbuff[(imsd+ilag)%msdlag].ats[jspec].y-msdbuff[imsd%msdlag].ats[jspec].y ); // y-comp
                             dz=(msdbuff[(imsd+ilag)%msdlag].ats[ispec].z-msdbuff[imsd%msdlag].ats[ispec].z)*
-                                                    (msdbuff[(imsd+ilag)%msdlag].ats[jspec].z-msdbuff[imsd%msdlag].ats[jspec].z); // z-comp
+                                                    ( msdbuff[(imsd+ilag)%msdlag].ats[jspec].z-msdbuff[imsd%msdlag].ats[jspec].z ); // z-comp
                             // accumulate the true MSD
                             dmatrix[ilag,(ispec*mtypes.size())+jspec]+=dx+dy+dz;
                             nmsd[ilag]++;
@@ -1511,6 +1512,7 @@ int main(int argc, char **argv)
         std::cerr<<"# PRINTING OUT msd\n";
         for (unsigned long it=0; it<msdlag; ++it)
         {
+            std::cerr<<" NMSD value: "<<nmsd[it]<<std::endl;
             (*omsd) <<it*dt<<"  "<<dmsd[it]/nmsd[it]<<std::endl;
         }
         
@@ -1539,6 +1541,7 @@ int main(int argc, char **argv)
           }
         std::cerr<<"# PRINTING OUT multidiff coefficients\n";
         for (unsigned long it=0; it<msdlag; ++it){
+            std::cerr<<" NMSD value: "<<nmsd[it]<<std::endl;
             for (unsigned long ispec=0; ispec<mtypes.size(); ++ispec){
                 for (unsigned long jspec=ispec; jspec<mtypes.size(); ++jspec){
                     (*omsd) <<it*dt<<"  "<<ispec<<"  "<<jspec<<"  "<<dmatrix[it,ispec,jspec]/nmsd[it]<<std::endl;

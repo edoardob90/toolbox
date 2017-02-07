@@ -1372,7 +1372,7 @@ int main(int argc, char **argv)
                 for (unsigned long ispec=0; ispec<mtypes.size(); ++ispec) {
                     for (unsigned long jspec=ispec; jspec<mtypes.size(); ++jspec) {
                         if ( fmsd_inc(imsd%msdlag,ispec) && fmsd_inc(imsd%msdlag,jspec) ) {
-							
+							// WRONG way of retriving atoms species here !!!
                             dx=(msdbuff[(imsd+ilag)%msdlag].ats[ispec].x-msdbuff[imsd%msdlag].ats[ispec].x)*
                                                     (msdbuff[(imsd+ilag)%msdlag].ats[jspec].x-msdbuff[imsd%msdlag].ats[jspec].x); // x-comp
                             dy=(msdbuff[(imsd+ilag)%msdlag].ats[ispec].y-msdbuff[imsd%msdlag].ats[ispec].y)*

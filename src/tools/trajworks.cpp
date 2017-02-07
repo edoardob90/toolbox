@@ -530,24 +530,8 @@ int main(int argc, char **argv)
     //... and multi-component MSD stuff
     unsigned long pairs;
     std::valarray<double> dmatrix;
-    FMatrix<unsigned long> spec_list;
-    /*
-     * APPARENTLY THIS IS WRONG FOR C++98/03 STANDARD
-    // Instead of using FMatrix class which must be pre-allocated, I try to use a structure
-    struct atom_idx
-    {
-		std::string label;
-		unsigned long atom_id;
-		// method to insert a pair (label,index)
-		atom_idx_insert (std::string l, unsigned long idx)
-		{
-			this->label=l;
-			this->atom_id=idx;
-		}
-	};
-	// Now I declare an instance of the above struct
-	std::vector<atom_idx> spec_list;
-	*/
+    FMatrix<AtomFrame> msdbuff2;
+    
 
     //density histograms
     std::valarray<HGOptions<Histogram<double> > > hgo(3);
@@ -753,12 +737,16 @@ int main(int argc, char **argv)
     if (fweights!="") ifweights.open(fweights.c_str());
     ffirstcell=true;
 
-
-    // small debug before reading
-    //std::cerr<<"HOW MANY? "<<mtypes.size()<<std::endl;
-    //unsigned long pairs=binCoeff(mtypes.size()+2-1,2);
-    //std::cerr<<"NUMBER OF PAIRS: "<<pairs<<std::endl;
-    //exit(99);
+    
+    // MS diffusion pre stuff
+    // we know how many species for MSdiff, so resize the array
+    if (fmsdiff) {
+        // compute number of pairs
+        pairs=binCoeff(mtypes.size()+2-1,2);
+        // resize buffers
+        msdbuff2.resize(msdlag,mtypes.size());
+		dmatrix.resize(msdlag,pairs);
+    }
     
     
     // START reading trajectory input
@@ -1321,13 +1309,10 @@ int main(int argc, char **argv)
         // multi-diffusion: we compute here a "generalized" MSD taking into account different chemical species
         if (fmsdiff)
         {
-            // compute number of pairs
-            pairs=binCoeff(mtypes.size()+2-1,2);
             // if first frame, resize buffers
             if (npfr==1) { 
-				fmsd_inc.resize(msdlag,mtypes.size()); fmsd_inc.all()=false;
-				dmatrix.resize(msdlag,pairs);
-				spec_list.resize(mtypes.size(), af.ats.size()); // This is VERY BAD, because we are allocating an array much bigger than needed (I don't know how to do this with vectors)
+				fmsd_inc.resize(msdlag,af.ats.size()); fmsd_inc.all()=false;
+				//spec_list.resize(af.ats.size(),mtypes.size()); // This isn't OPTIMAL: we are allocating an array much bigger than needed (I don't know how to do this with vectors)
 			}
             
             // now parse current frame and label species
@@ -1338,27 +1323,16 @@ int main(int argc, char **argv)
 			} else if ( af.ats.size()%mtypes.size()!=0 ) { ERROR("Atom species for MSD don't match types in trajectory!"); } 
 			else {
 				// Here we must also track of which type is the atom number currently parsed (i-th atom in the following cycle)
-				for (unsigned long i=0; i<af.ats.size(); ++i) { // cycle over all the atoms
-					
-                    for (unsigned long j=0; j<mtypes.size(); ++j) { // cycle over the species gives as input
-						
-                        if(af.ats[i].name==mtypes[j]) {							
-                            fmsd_inc((npfr-1)%msdlag,j)=true; // set the "parse flag" to true
-                            spec_list.insert(j,i,i);
-                            //spec_list.push_back(atom_idx_insert(mtypes[j],i));
+				for (unsigned long j=0; j<mtypes.size(); ++j) { // cycle over the species gives as input
+					for (unsigned long i=0; i<af.ats.size(); ++i) { // cycle over all the atoms
+                        if( mtypes[j]==af.ats[i].name ) {							
+                            fmsd_inc((npfr-1)%msdlag,iat)=true; // set the "parse flag" to true
+                            //spec_list.insert(i,j,i);
+                            //species_vector.push_back(mtypes[j]);
                         }   
 					}
 				}
 			}
-			// DEBUG spec_list
-			for (unsigned long i=0; i<af.ats.size(); ++i) {
-				for (unsigned long j=0; j<mtypes.size(); ++j) {
-					std::cerr<<"First row of spec_list. LABEL: "<<spec_list.access(j,i)<<" and IDX: "<<spec_list.access(j,i)<<std::endl;
-				}
-			}
-			abort();
-			
-			
 			
             // fill the buffer
             msdbuff[(npfr-1)%msdlag] = af; // current traj frame in buffer
@@ -1367,24 +1341,23 @@ int main(int argc, char **argv)
             // compute
             imsd = npfr-msdlag; // we compute MSD for this frame
             for (unsigned long ilag=0; ilag<msdlag; ++ilag) {
-				
-                // now check that species i and j are labelled as "true"; if yes, accumulate MSD
-                for (unsigned long ispec=0; ispec<mtypes.size(); ++ispec) {
-                    for (unsigned long jspec=ispec; jspec<mtypes.size(); ++jspec) {
-                        if ( fmsd_inc(imsd%msdlag,ispec) && fmsd_inc(imsd%msdlag,jspec) ) {
-							// WRONG way of retriving atoms species here !!!
-                            dx=(msdbuff[(imsd+ilag)%msdlag].ats[ispec].x-msdbuff[imsd%msdlag].ats[ispec].x)*
-                                                    (msdbuff[(imsd+ilag)%msdlag].ats[jspec].x-msdbuff[imsd%msdlag].ats[jspec].x); // x-comp
-                            dy=(msdbuff[(imsd+ilag)%msdlag].ats[ispec].y-msdbuff[imsd%msdlag].ats[ispec].y)*
-                                                    ( msdbuff[(imsd+ilag)%msdlag].ats[jspec].y-msdbuff[imsd%msdlag].ats[jspec].y ); // y-comp
-                            dz=(msdbuff[(imsd+ilag)%msdlag].ats[ispec].z-msdbuff[imsd%msdlag].ats[ispec].z)*
-                                                    ( msdbuff[(imsd+ilag)%msdlag].ats[jspec].z-msdbuff[imsd%msdlag].ats[jspec].z ); // z-comp
-                            
-                            // accumulate the true MSD
-                            dmatrix[ilag,(ispec*mtypes.size())+jspec]+=dx+dy+dz;
-                            nmsd[ilag]++;
+                
+                for (unsigned long iat=0; iat<af.ats.size(); ++iat) { // cycle over all the atoms
+					
+					if ( fmsd_inc(imsd%msdlag,iat) ) {
+						
+						for (unsigned long ispec=0; ispec<mtypes.size(); ++ispec) {
+                           
+                            for (unsigned long jspec=0; jspec<mtypes.size(); ++jspec) { 
+                                dx=msdbuff[(imsd+j)%msdlag].ats[iat].x-msdbuff[imsd%msdlag].ats[iat].x;
+                                dy=msdbuff[(imsd+j)%msdlag].ats[iat].y-msdbuff[imsd%msdlag].ats[iat].y;
+                                dz=msdbuff[(imsd+j)%msdlag].ats[iat].z-msdbuff[imsd%msdlag].ats[iat].z;
+                                // accumulate the true MSD
+                                dmatrix[ilag,(ispec*mtypes.size())+jspec]+=dx+dy+dz;
+                                nmsd[ilag]++;
+                           }
                         }
-                    }
+					}
                 }
             }
         } // end MultiDiff section
@@ -1559,10 +1532,12 @@ int main(int argc, char **argv)
             (*omsd) <<it*dt<<"  "<<dmsd[it]/nmsd[it]<<std::endl;
         }
         
-    } else if (fmsdiff) {
+    }
+    if (fmsdiff) 
+    {
           for (unsigned long ts=0; ts<msdlag; ++ts) {
             ++imsd;
-            std::cerr<<  "Finishing to average the MSD (multidiff)"<<std::setw(10)<<std::setiosflags(std::ios::right)<<imsd<<"\r";
+            std::cerr<<"Finishing to average the MSD (multidiff)"<<std::setw(10)<<std::setiosflags(std::ios::right)<<imsd<<"\r";
             for (unsigned long ilag=0; ilag<msdlag; ++ilag) {
                     if ((imsd+ilag)>(npfr-1)) break;
                     for (unsigned long ispec=0; ispec<mtypes.size(); ++ispec) {

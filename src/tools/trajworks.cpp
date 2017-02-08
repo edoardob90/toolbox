@@ -368,8 +368,7 @@ void banner()
             << " -msdlag   maximum time-lag to compute msd for [1000]                           \n"
             << " ## multi-component diffusion (Maxwell-Stefan) Onsager coefficients (-msdiff) 	\n"
 			<< " -maxlag   maximum time-lag to compute msd for [1000]							\n"
-			<< " -types    list of molecular species to compute diffusion matrix for [*]        \n"
-            << "           (default means all species found in input trajectory)                \n"
+			<< " -types    pair of molecular species to compute transport coefficient for [*]   \n"
             << " ## velocity-velocity correlation options (-vvac)                               \n"
             << " -vvat     label of the monitored specie [*]                                    \n"
             << " -vvlag    maximum time-lag to compute vvac for [1000]                          \n"
@@ -530,8 +529,7 @@ int main(int argc, char **argv)
     //... and multi-component MSD stuff
     unsigned long pairs;
     std::valarray<double> dmatrix;
-    FMatrix<AtomFrame> msdbuff2;
-    
+	std::valarray<std::vector<unsigned long> > mtypes_matrix(2);
 
     //density histograms
     std::valarray<HGOptions<Histogram<double> > > hgo(3);
@@ -741,11 +739,12 @@ int main(int argc, char **argv)
     // MS diffusion pre stuff
     // we know how many species for MSdiff, so resize the array
     if (fmsdiff) {
-        // compute number of pairs
-        pairs=binCoeff(mtypes.size()+2-1,2);
+		// check that no more than 2 molecular type are supplied
+		if (mtypes.size()!=2 || (mtypes.size()==1 && mtypes[0]=="*") ) { ERROR("Input molecular species must be TWO!"); }
+        // compute number of pairs; only relevant pairs: identical pairs => self-diffusion coeff
+        //pairs=binCoeff(mtypes.size(),2);
         // resize buffers
-        msdbuff2.resize(msdlag,mtypes.size());
-		dmatrix.resize(msdlag,pairs);
+		dmatrix.resize(msdlag,2);
     }
     
     
@@ -1317,20 +1316,16 @@ int main(int argc, char **argv)
             
             // now parse current frame and label species
             fmsd_inc.row((npfr-1)%msdlag)=false;
-            if (mtypes.size()==1) { 
-				if (mtypes[0]!="*") { ERROR("Only one species requested for multidiff. Perhaps you want to compute self-diff instead?"); }
-				else { fmsd_inc.row((npfr-1)%msdlag)=true; }
-			} else if ( af.ats.size()%mtypes.size()!=0 ) { ERROR("Atom species for MSD don't match types in trajectory!"); } 
-			else {
-				// Here we must also track of which type is the atom number currently parsed (i-th atom in the following cycle)
-				for (unsigned long j=0; j<mtypes.size(); ++j) { // cycle over the species gives as input
-					for (unsigned long i=0; i<af.ats.size(); ++i) { // cycle over all the atoms
-                        if( mtypes[j]==af.ats[i].name ) {							
-                            fmsd_inc((npfr-1)%msdlag,iat)=true; // set the "parse flag" to true
-                            //spec_list.insert(i,j,i);
-                            //species_vector.push_back(mtypes[j]);
-                        }   
-					}
+            
+			//if (mtypes[0]="*") { fmsd_inc.row((npfr-1)%msdlag)=true; }
+			
+			// Here we must also track of which type is the atom number currently parsed (i-th atom in the following cycle)
+			for (unsigned long j=0; j<mtypes.size(); ++j) { // cycle over the species gives as input
+				for (unsigned long i=0; i<af.ats.size(); ++i) { // cycle over all the atoms
+                	if( mtypes[j]==af.ats[i].name ) {							
+                    	fmsd_inc((npfr-1)%msdlag,i)=true; // set the "parse flag" to true
+						mtypes_matrix[j].push_back(i); // mark the i-th atom as belonging to j-th species
+                    }   
 				}
 			}
 			
@@ -1348,7 +1343,8 @@ int main(int argc, char **argv)
 						
 						for (unsigned long ispec=0; ispec<mtypes.size(); ++ispec) {
                            
-                            for (unsigned long jspec=0; jspec<mtypes.size(); ++jspec) { 
+                            for (unsigned long jspec=0; jspec<mtypes.size(); ++jspec) {
+								
                                 dx=msdbuff[(imsd+j)%msdlag].ats[iat].x-msdbuff[imsd%msdlag].ats[iat].x;
                                 dy=msdbuff[(imsd+j)%msdlag].ats[iat].y-msdbuff[imsd%msdlag].ats[iat].y;
                                 dz=msdbuff[(imsd+j)%msdlag].ats[iat].z-msdbuff[imsd%msdlag].ats[iat].z;

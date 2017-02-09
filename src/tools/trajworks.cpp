@@ -527,9 +527,9 @@ int main(int argc, char **argv)
     nmsd=0; dmsd=0.;
     FMatrix<bool>  fmsd_inc(msdlag,msdlag);
     //... and multi-component MSD stuff
-    unsigned long pairs;
+    //unsigned long pairs; // USELESS (to be removed)
     std::valarray<double> dmatrix;
-	std::valarray<std::vector<unsigned long> > mtypes_matrix(2);
+	std::vector<std::vector<unsigned long> > mtypes_matrix(2);
 
     //density histograms
     std::valarray<HGOptions<Histogram<double> > > hgo(3);
@@ -737,14 +737,12 @@ int main(int argc, char **argv)
 
     
     // MS diffusion pre stuff
-    // we know how many species for MSdiff, so resize the array
     if (fmsdiff) {
 		// check that no more than 2 molecular type are supplied
 		if (mtypes.size()!=2 || (mtypes.size()==1 && mtypes[0]=="*") ) { ERROR("Input molecular species must be TWO!"); }
         // compute number of pairs; only relevant pairs: identical pairs => self-diffusion coeff
         //pairs=binCoeff(mtypes.size(),2);
-        // resize buffers
-		dmatrix.resize(msdlag,2);
+		dmatrix.resize(msdlag,2); // this will contain the coefficient for the i-j species  
     }
     
     
@@ -1324,7 +1322,7 @@ int main(int argc, char **argv)
 				for (unsigned long i=0; i<af.ats.size(); ++i) { // cycle over all the atoms
                 	if( mtypes[j]==af.ats[i].name ) {							
                     	fmsd_inc((npfr-1)%msdlag,i)=true; // set the "parse flag" to true
-						mtypes_matrix[j].push_back(i); // mark the i-th atom as belonging to j-th species
+						mtypes_matrix.at(j).push_back(i); // mark the i-th atom as belonging to j-th species
                     }   
 				}
 			}
@@ -1332,30 +1330,24 @@ int main(int argc, char **argv)
             // fill the buffer
             msdbuff[(npfr-1)%msdlag] = af; // current traj frame in buffer
             if( (npfr-1)<(msdlag-1) ) continue; // go on with filling the buffer until the end of the trajectory or the maxlag chosen
-
-            // compute
             imsd = npfr-msdlag; // we compute MSD for this frame
-            for (unsigned long ilag=0; ilag<msdlag; ++ilag) {
-                
-                for (unsigned long iat=0; iat<af.ats.size(); ++iat) { // cycle over all the atoms
-					
-					if ( fmsd_inc(imsd%msdlag,iat) ) {
-						
-						for (unsigned long ispec=0; ispec<mtypes.size(); ++ispec) {
-                           
-                            for (unsigned long jspec=0; jspec<mtypes.size(); ++jspec) {
+			for (unsigned long ispec=0; ispec<mtypes.size(); ++ispec) {
+	            for (unsigned long ilag=0; ilag<msdlag; ++ilag) {
+					// THE FOLLOWING IS WRONG: we need an iterator!
+					//for (unsigned long iat=0; iat<mtypes_matrix.at(ispec).size(); ++iat) // cycle over all the atoms of this species
+					for (std::vector<unsigned long>::const_iterator iat=mtypes_matrix.at(ispec).begin(); iat!=mtypes_matrix.at(ispec).end(); ++iat){
+						if ( fmsd_inc(imsd%msdlag,iat) ) { // if the atom was marked, compute...
 								
-                                dx=msdbuff[(imsd+j)%msdlag].ats[iat].x-msdbuff[imsd%msdlag].ats[iat].x;
-                                dy=msdbuff[(imsd+j)%msdlag].ats[iat].y-msdbuff[imsd%msdlag].ats[iat].y;
-                                dz=msdbuff[(imsd+j)%msdlag].ats[iat].z-msdbuff[imsd%msdlag].ats[iat].z;
+                            	dx=msdbuff[(imsd+j)%msdlag].ats[(*iat)].x-msdbuff[imsd%msdlag].ats[(*iat)].x;
+                            	dy=msdbuff[(imsd+j)%msdlag].ats[(*iat)].y-msdbuff[imsd%msdlag].ats[(*iat)].y;
+                            	dz=msdbuff[(imsd+j)%msdlag].ats[(*iat)].z-msdbuff[imsd%msdlag].ats[(*iat)].z;
                                 // accumulate the true MSD
-                                dmatrix[ilag,(ispec*mtypes.size())+jspec]+=dx+dy+dz;
-                                nmsd[ilag]++;
-                           }
+                                dmatrix[ilag,ispec]+=dx+dy+dz;
+                                nmsd[ilag]++; // it counts the number of atoms * numbe of lags
                         }
-					}
-                }
-            }
+					} // cycle on atoms
+				} // cycle on lag-intervals
+            } // cycle on species
         } // end MultiDiff section
         if (fdipole)
         {
@@ -1396,7 +1388,10 @@ int main(int argc, char **argv)
 
 	// EOF trajectory read
 	
-    //normalize the histogram according to g(r) definition
+    
+	
+	
+	//normalize the histogram according to g(r) definition
 
     if (fgdr)
     {
@@ -1533,38 +1528,29 @@ int main(int argc, char **argv)
     {
           for (unsigned long ts=0; ts<msdlag; ++ts) {
             ++imsd;
-            std::cerr<<"Finishing to average the MSD (multidiff)"<<std::setw(10)<<std::setiosflags(std::ios::right)<<imsd<<"\r";
-            for (unsigned long ilag=0; ilag<msdlag; ++ilag) {
-                    if ((imsd+ilag)>(npfr-1)) break;
-                    for (unsigned long ispec=0; ispec<mtypes.size(); ++ispec) {
-                        for (unsigned long jspec=ispec; jspec<mtypes.size(); ++jspec) {
-                            if (fmsd_inc(imsd%msdlag,ispec) && fmsd_inc(imsd%msdlag,jspec)) {
-                                dx=(msdbuff[(imsd+ilag)%msdlag].ats[ispec].x-msdbuff[imsd%msdlag].ats[ispec].x)*
-                                                        (msdbuff[(imsd+ilag)%msdlag].ats[jspec].x-msdbuff[imsd%msdlag].ats[jspec].x); // x-comp
-                                dy=(msdbuff[(imsd+ilag)%msdlag].ats[ispec].y-msdbuff[imsd%msdlag].ats[ispec].y)*
-                                                        (msdbuff[(imsd+ilag)%msdlag].ats[jspec].y-msdbuff[imsd%msdlag].ats[jspec].y); // y-comp
-                                dz=(msdbuff[(imsd+ilag)%msdlag].ats[ispec].z-msdbuff[imsd%msdlag].ats[ispec].z)*
-                                                        (msdbuff[(imsd+ilag)%msdlag].ats[jspec].z-msdbuff[imsd%msdlag].ats[jspec].z); // z-comp
-#ifdef DEBUG
-								std::cerr<<"X-comp: "<<dx<<std::endl;
-								std::cerr<<"Y-comp: "<<dy<<std::endl;
-								std::cerr<<"Z-comp: "<<dz<<std::endl;
-#endif
+            std::cerr<<"Finishing to average the MSD (multidiff) "<<std::setw(10)<<std::setiosflags(std::ios::right)<<imsd<<"\r";
+			for (unsigned long ispec=0; ispec<mtypes.size(); ++ispec) {
+	            for (unsigned long ilag=0; ilag<msdlag; ++ilag) {  
+					for (std::vector<unsigned long>::const_iterator iat=mtypes_matrix.at(ispec).begin(); iat!=mtypes_matrix.at(ispec).end(); ++iat){
+						if ( fmsd_inc(imsd%msdlag,iat) ) { // if the atom was marked, compute...
+								
+                                dx=msdbuff[(imsd+j)%msdlag].ats[(*iat)].x-msdbuff[imsd%msdlag].ats[(*iat)].x;
+                                dy=msdbuff[(imsd+j)%msdlag].ats[(*iat)].y-msdbuff[imsd%msdlag].ats[(*iat)].y;
+                                dz=msdbuff[(imsd+j)%msdlag].ats[(*iat)].z-msdbuff[imsd%msdlag].ats[(*iat)].z;
                                 // accumulate the true MSD
-                                dmatrix[ilag,(ispec*mtypes.size())+jspec]+=dx+dy+dz;
-                                nmsd[ilag]++;
-                            }
+                                dmatrix[ilag,ispec]+=dx+dy+dz;
+                                nmsd[ilag]++; // it counts the number of atoms, but we already know how many atoms we have for a given species
                         }
-                    }
-            }
+					} // cycle on atoms
+				} // cycle on lags
+            } // cycle on species
           }
-        std::cerr<<"# PRINTING OUT multidiff coefficients"<<std::endl;
+        
+		std::cerr<<"# PRINTING OUT multidiff coefficients"<<std::endl;
         for (unsigned long it=0; it<msdlag; ++it){
-            std::cerr<<" NMSD value: "<<nmsd[it]<<std::endl;
-            for (unsigned long ispec=0; ispec<mtypes.size(); ++ispec){
-                for (unsigned long jspec=ispec; jspec<mtypes.size(); ++jspec){
-                    (*omsd) <<it*dt<<"  "<<ispec<<"  "<<jspec<<"  "<<dmatrix[it,ispec,jspec]/nmsd[it]<<std::endl;
-                }
+            //std::cerr<<" NMSD value: "<<nmsd[it]<<std::endl;
+            for (unsigned long ispec=0; jspec<mtypes.size(); ++ispec){
+                 (*omsd) <<it*dt<<"  "<<ispec<<"  "<<jspec<<"  "<<dmatrix[it,ispec,jspec]/nmsd[it]<<std::endl;
             }
         }
     }

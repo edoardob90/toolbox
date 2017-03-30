@@ -1524,32 +1524,34 @@ int main(int argc, char **argv)
     }
     if (fmsdiff) 
     {
-          for (unsigned long ts=0; ts<msdlag; ++ts) {
-            ++imsd;
-            std::cerr<<"Finishing to average the MSD (multidiff) "<<std::setw(10)<<std::setiosflags(std::ios::right)<<imsd<<"\r";
-	        for (unsigned long ilag=0; ilag<msdlag; ++ilag) {  
-			    for (unsigned long ispec=0; ispec<mtypes.size(); ++ispec) {
-					for (std::vector<unsigned long>::const_iterator iat=mtypes_matrix.at(ispec).begin(); iat!=mtypes_matrix.at(ispec).end(); ++iat){
-						if ( fmsd_inc(imsd%msdlag,(*iat)) ) { // if the atom was marked, compute...
-								
-                                dx=msdbuff[(imsd+ilag)%msdlag].ats[(*iat)].x-msdbuff[imsd%msdlag].ats[(*iat)].x;
-                                dy=msdbuff[(imsd+ilag)%msdlag].ats[(*iat)].y-msdbuff[imsd%msdlag].ats[(*iat)].y;
-                                dz=msdbuff[(imsd+ilag)%msdlag].ats[(*iat)].z-msdbuff[imsd%msdlag].ats[(*iat)].z;
-                                // accumulate the true MSD
-                                dmatrix[ilag,ispec]+=dx+dy+dz;
-                                nmsd[ilag]++; // it counts the number of atoms, but we already know how many atoms we have for a given species
-                        }
-					} // cycle on atoms
-				} // cycle on lags
-            } // cycle on species
-          }
-        
+        std::cerr<<"STOCAZZO CHE FINISCO !!!"<<std::endl;
+        //  for (unsigned long ts=0; ts<msdlag; ++ts) {
+        //    ++imsd;
+        //    std::cerr<<"Finishing to average the MSD (multidiff) "<<std::setw(10)<<std::setiosflags(std::ios::right)<<imsd<<"\r";
+	    //    for (unsigned long ilag=0; ilag<msdlag; ++ilag) {  
+        //        std::cerr<<"I'M HERE: ilag"<<std::endl;
+		//	    for (unsigned long ispec=0; ispec<mtypes.size(); ++ispec) {
+        //            std::cerr<<"I'M HERE: ispec"<<std::endl;
+		//			for (std::vector<unsigned long>::const_iterator iat=mtypes_matrix.at(ispec).begin(); iat!=mtypes_matrix.at(ispec).end(); ++iat){
+        //                std::cerr<<"I'M HERE: iat (iterator)"<<std::endl;
+		//				if ( fmsd_inc(imsd%msdlag,(*iat)) ) { // if the atom was marked, compute...
+		//					    std::cerr<<"Checking atom flag"<<std::endl;	
+        //                        dx=msdbuff[(imsd+ilag)%msdlag].ats[(*iat)].x-msdbuff[imsd%msdlag].ats[(*iat)].x;
+        //                        dy=msdbuff[(imsd+ilag)%msdlag].ats[(*iat)].y-msdbuff[imsd%msdlag].ats[(*iat)].y;
+        //                        dz=msdbuff[(imsd+ilag)%msdlag].ats[(*iat)].z-msdbuff[imsd%msdlag].ats[(*iat)].z;
+        //                        // accumulate the true MSD
+        //                        dmatrix[ilag,ispec]+=dx+dy+dz;
+        //                        nmsd[ilag]++; // it counts the number of atoms, but we already know how many atoms we have for a given species
+        //                }
+		//			} // cycle on atoms
+		//		} // cycle on lags
+        //    } // cycle on species
+        //  }
+        //
 		//std::cerr<<"# PRINTING OUT multidiff coefficients"<<std::endl;
         //for (unsigned long it=0; it<msdlag; ++it){
         //    //std::cerr<<" NMSD value: "<<nmsd[it]<<std::endl;
-        //    for (unsigned long ispec=0; jspec<mtypes.size(); ++ispec){
-        //         (*omsd) <<it*dt<<"  "<<ispec<<"  "<<jspec<<"  "<<dmatrix[it,ispec,jspec]/nmsd[it]<<std::endl;
-        //    }
+        //    (*omsd) <<it*dt<<"  "<<dmatrix[it,0]*dmatrix[it,1]/nmsd[it]<<std::endl; // output here is done in a bit dirty way
         //}
     }
     if (fdipole)

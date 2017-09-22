@@ -740,9 +740,7 @@ int main(int argc, char **argv)
     if (fmsdiff) {
 		// check that no more than 2 molecular type are supplied
 		if (mtypes.size()!=2 || (mtypes.size()==1 && mtypes[0]=="*") ) { ERROR("Input molecular species must be TWO!"); }
-        // compute number of pairs; only relevant pairs: identical pairs => self-diffusion coeff
-        //pairs=binCoeff(mtypes.size(),2);
-		    dmatrix.resize(msdlag,2); // this will contain the coefficient for the i-j species  
+		dmatrix.resize(msdlag,2); // this will contain the coefficient for the i-j species  
     }
     
     
@@ -1309,14 +1307,10 @@ int main(int argc, char **argv)
             // if first frame, resize buffers
             if (npfr==1) { 
 				fmsd_inc.resize(msdlag,af.ats.size()); fmsd_inc.all()=false;
-				//spec_list.resize(af.ats.size(),mtypes.size()); // This isn't OPTIMAL: we are allocating an array much bigger than needed (I don't know how to do this with vectors)
 			}
             
             // now parse current frame and label species
             fmsd_inc.row((npfr-1)%msdlag)=false;
-            
-			//if (mtypes[0]="*") { fmsd_inc.row((npfr-1)%msdlag)=true; }
-			
 			// Here we must also track of which type is the atom number currently parsed (i-th atom in the following cycle)
 			for (unsigned long j=0; j<mtypes.size(); ++j) { // cycle over the species gives as input
 				for (unsigned long i=0; i<af.ats.size(); ++i) { // cycle over all the atoms

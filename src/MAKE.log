@@ -1,0 +1,28 @@
+make -C libs all
+make[1]: Entering directory '/local/scratch/ebaldi/CODES/toolbox/src/libs'
+make[1]: Nothing to be done for 'all'.
+make[1]: Leaving directory '/local/scratch/ebaldi/CODES/toolbox/src/libs'
+make -C tools all
+make[1]: Entering directory '/local/scratch/ebaldi/CODES/toolbox/src/tools'
+Makefile:32: warning: overriding recipe for target '../../bin/trajworks'
+Makefile:29: warning: ignoring old recipe for target '../../bin/trajworks'
+g++ -M -O3 -ftracer -g -fpermissive  -I../libs trajworks.cpp > trajworks.d.$$;                      \
+           sed 's,\(trajworks\)\.o[ :]*,\1.o trajworks.d : ,g' < trajworks.d.$$ > trajworks.d;     \
+           rm -f trajworks.d.$$
+Makefile:32: warning: overriding recipe for target '../../bin/trajworks'
+Makefile:29: warning: ignoring old recipe for target '../../bin/trajworks'
+g++ -c  -O3 -ftracer -g -fpermissive  -I../libs -o trajworks.o trajworks.cpp
+In file included from ../libs/rndgen.hpp:10:0,
+                 from trajworks.cpp:2:
+../libs/tbdefs.hpp:295:91: warning: redeclaration of ‘toolbox::IterOptions<U, N>::IterOptions(long unsigned int, const toolbox::fixarray<double, N>&, const toolbox::fixarray<U, N>&, const toolbox::fixarray<toolbox::IChkFlags, N>&)’ may not have default arguments [-fpermissive]
+                    const fixarray<IChkFlags,N>& nflags=fixarray<IChkFlags,N>(ichk_default))
+                                                                                           ^
+g++ -O3 -ftracer -g -fpermissive  -I../libs -o ../../bin/trajworks trajworks.o -L../libs -ltoolbox -lfftw3 -llapack 
+g++ -O3 -ftracer -g -fpermissive  -I../libs   -c -o fourier.o fourier.cpp
+In file included from ../libs/clparser.hpp:9:0,
+                 from fourier.cpp:6:
+../libs/tbdefs.hpp:295:91: warning: redeclaration of ‘toolbox::IterOptions<U, N>::IterOptions(long unsigned int, const toolbox::fixarray<double, N>&, const toolbox::fixarray<U, N>&, const toolbox::fixarray<toolbox::IChkFlags, N>&)’ may not have default arguments [-fpermissive]
+                    const fixarray<IChkFlags,N>& nflags=fixarray<IChkFlags,N>(ichk_default))
+                                                                                           ^
+g++ -O3 -ftracer -g -fpermissive  -I../libs -o ../../bin/fourier fourier.o -L../libs -ltoolbox -lfftw3 -llapack
+make[1]: Leaving directory '/local/scratch/ebaldi/CODES/toolbox/src/tools'

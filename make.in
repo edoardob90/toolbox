@@ -4,6 +4,8 @@
 LDFLAGS=-llapack -lblas -lfftw3
 CXX=g++
 CXXFLAGS=-O3 -ftracer -g 
+LIBTOOL=ar
+LIBFLAGS=rcs
 
 REL=../..
 ifneq ($(ARCH),)

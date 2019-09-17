@@ -4,10 +4,10 @@ SOURCES=$(shell ls *.cpp)
 OBJECTS=$(SOURCES:.cpp=.o)
 DEPENDS=$(SOURCES:.cpp=.d)
 
-all: libtoolbox.a 
+all: libtoolbox.a
 
 libtoolbox.a: $(OBJECTS)
-	ar rcs libtoolbox.a $(OBJECTS)
+	$(LIBTOOL) $(LIBFLAGS) $@ $^
 
 -include $(DEPENDS)
 %.d: %.cpp

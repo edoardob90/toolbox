@@ -1,0 +1,7 @@
+FFTWPATH    = /usr/local/Cellar/fftw/3.3.8_1
+LAPACKPATH  = /usr/local/opt/lapack
+CXX         = /usr/local/bin/g++-9
+CXXFLAGS    = -I$(LAPACKPATH)/include -I$(FFTWPATH)/include -O3 -ftracer -fpermissive -fPIC
+LDFLAGS     = -L$(LAPACKPATH)/lib -L$(FFTWPATH)/lib -lfftw3 -llapack
+LIBTOOL     = libtool
+LIBFLAGS    = -static -o # -o is needed here because `libtool` requires that flag before the output target differently from `ar`
